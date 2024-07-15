@@ -14,18 +14,20 @@ class UserLogin(BaseModel):
     userid:str
     password:str
 
+
+
 class Session(BaseModel):
     userid:str
 
 class getQueries(BaseModel):
     userid:str
 class newquery(BaseModel):
-    quries:str
+    queries:str
     userid:str
     querytype:str
     opendate:str
     closedate:str
-    process:str
+    processtype:str
 
 class updatequery(BaseModel):
     id:int
@@ -36,4 +38,3 @@ class updatequery(BaseModel):
 class deletequery(BaseModel):
     id:int
     
-

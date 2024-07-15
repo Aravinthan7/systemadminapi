@@ -37,7 +37,7 @@ async def Signup(usersignup: UserModel.User):
         cur.execute("SELECT @_Signup_sp_0")
         message = cur.fetchone()[0]
 
-        return {status: 200, 'detail': '', "message": message}
+        return {"status": 200, 'detail': '', "message": message}
     except db.Mysqlconfig.error as err:
         # conn.rollback()
         return HTTPException(status=500, detail=f"Database error: {err._full_msg}", message=err.msg)
@@ -52,6 +52,22 @@ async def Login(request: Request, user: UserModel.UserLogin):
         sql_query = "CALL Login_sp(%s, %s)"
         cur.execute(sql_query, (user.userid, user.password))
         result = cur.fetchone()
+        result = {
+            "status": True,
+            "data": [{
+                "username": result[0],
+                "email": result[1],
+                "password": result[3],
+                "profileimage": result[4],
+                "role": result[5],
+                "addinfo": result[6],
+                "userid": result[7],
+                "systemno": result[8],
+                "sessionid": result[9]
+            }],
+            "msg":''
+
+        }
         return result
 
     except err:
@@ -61,63 +77,87 @@ async def Login(request: Request, user: UserModel.UserLogin):
 @app.post('/sessioncheck')
 async def session(session: UserModel.Session):
     try:
-        sql_query = f"CALL Checksession_sp({session.userid})"
+        sql_query = f"CALL Checksession_sp('{session.userid}')"
         cur.execute(sql_query)
         result = cur.fetchone()
         returndata = {"status": True, "data": result}
         return returndata
-    except err:
-        return err
+    except err as e:
+        return {'status': False, "data": [], "msg": e}
+    finally:
+        cur.close()
+        conn.close()
 
 
 @app.post('/updatesession')
 async def sessionupdate(session: UserModel.Session):
     try:
         tuuid = uuid1()
-        sql_query = f"CALL update_sessionid_sp({session.userid},{tuuid})"
+        sql_query = f"CALL update_sessionid_sp('{session.userid}','{tuuid}')"
         cur.execute(sql_query)
         result = cur.fetchone()
         returndata = {"status": True, "data": result, "msg": ''}
         return returndata
 
-    except err:
-        return err
-
+    except err as e:
+         return {'status': False, "data": [], "msg": e}
+    finally:
+        cur.close()
+        conn.close()
 
 @app.post('/getqueries')
 async def getqureis(user: UserModel.getQueries):
     try:
-        sql_query = f"Call Queries_sp({user.userid})"
+        sql_query = f"Call Queries_sp('{user.userid}')"
         cur.execute(sql_query)
-        result = cur.fetchone()
+        conn.commit()
+        result = cur.fetchall()
         returndata = {'status': True, "data": result, "msg": ""}
         return returndata
-    except err:
-        return {'status': False, "data": [], "msg": err}
+    except err as e:
+        return {'status': False, "data": [], "msg": e}
+    finally:
+        cur.close()
+        conn.close()
 
 
 @app.post('/Insertquery')
 async def Insertquery(query: UserModel.newquery):
     try:
-        sql_query = f"Call InsertQuery_sp({query.queries},{query.userid},{query.quertype},{query.opendate},{query.closedate},{query.process})"
+        sql_query = f"CALL InsertQuery_sp('{query.queries}', '{query.userid}', '{query.querytype}', '{query.opendate}', '{query.closedate}', '{query.processtype}')"
         cur.execute(sql_query)
-        result = cur.fetchone()
-        returndata = {"status": True, "data": result, "msg": ""}
+        conn.commit()
+        result =  cur.fetchone()
+        if 'Message'in result:
+            result=result['Message']
+
+        returndata = {"status": True, "data": "", "msg": result}
         return returndata
-    except err:
-        return {'status': False, "data": [], "msg": err}
+    except err as e:
+        conn.rollback()
+        return {'status': False, "data": [], "msg": str(e)}
+    finally:
+        cur.close()
+        conn.close()
 
 
 @app.put('/updatequery')
 async def updatequery(query: UserModel.updatequery):
     try:
-        sql_query = f"Call UpdateQueries_sp({query.id},{query.userid},{query.process},{query.closedate},{query.querytype})"
+        sql_query = f"Call UpdateQueries_sp('{query.id}','{query.userid}','{query.process}','{query.closedate}','{query.querytype}')"
         cur.execute(sql_query)
         result = cur.fetchone()
+        if 'Message'in result:
+            result=result['Message']
         returndata = {"status": True, "data": result, "msg": ""}
         return returndata
-    except err:
-        return {'status': False, "data": [], "msg": err}
+    except err as e:
+        return {'status': False, "data": [], "msg": e}
+
+    finally:
+        cur.close()
+        conn.close()
+
 
 
 @app.delete('/deletequery')
@@ -126,10 +166,11 @@ async def deletequery(query: UserModel.deletequery):
         sql_query = f"Call DeleteQuries_sp({query.id})"
         cur.execute(sql_query)
         result = cur.fetchone()
-        returndata = {"status":True, "data": result, "msg": ""}
+        returndata = {"status": True, "data": result, "msg": ""}
         return returndata
-    except err:
-        return  {'status': False, "data": [], "msg": err}
+    except err as e:
+        return {'status': False, "data": [], "msg": e}
 
-
-
+    finally:
+        cur.close()
+        conn.close()
