@@ -1,6 +1,11 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Header, status
 from DB import db
 from Models import UserModel
+from typing import List, Optional
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
+
 
 # Global variables declared
 app = FastAPI()
@@ -9,10 +14,47 @@ cur = db.Mysqlconfig.cursor
 err = db.Mysqlconfig.error
 # --------
 
+# Enable CORS (if needed)
+app.add_middleware(
+    CORSMiddleware,
+    # Allow all origins for testing, tighten this in production
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# Mock user data (replace with actual user validation logic)
+fake_users_db = {
+    "johndoe": {
+        "username": "johndoe",
+        "full_name": "John Doe",
+        "email": "johndoe@example.com",
+        "hashed_password": "fakehashedpassword",
+    }
+}
+
+#Middleware for global authorization
+@app.middleware("http")
+async def global_auth_middleware(request: Request, call_next):
+    # Skip authentication for /docs and /redoc endpoints
+    encryptheader=request.headers.get('encryption')
+    if encryptheader != None and  encryptheader!= False and  encryptheader!='False' and encryptheader==True:
+        pass
+    elif encryptheader==False:
+        return await call_next(request)
+    else:
+    # if request.url.path.startswith("/docs") or request.url.path.startswith("/redoc"):
+        return await call_next(request)
+
+# Example: Check for Authorization header with Bearer token
+
 
 @app.get('/checkservice')
-async def root() -> dict:
-    return {"message": "Check Service"}
+async def root(dataencrypt: bool = Header(None), user_agent: str = Header(None),
+               x_token: List[str] = Header(None), q: Optional[str] = None) -> dict:
+    return {"message": "Check Service", "useragent": user_agent}
 
 
 @app.post('/signup')
@@ -65,7 +107,7 @@ async def Login(request: Request, user: UserModel.UserLogin):
                 "systemno": result[8],
                 "sessionid": result[9]
             }],
-            "msg":''
+            "msg": ''
 
         }
         return result
@@ -100,10 +142,11 @@ async def sessionupdate(session: UserModel.Session):
         return returndata
 
     except err as e:
-         return {'status': False, "data": [], "msg": e}
+        return {'status': False, "data": [], "msg": e}
     finally:
         cur.close()
         conn.close()
+
 
 @app.post('/getqueries')
 async def getqureis(user: UserModel.getQueries):
@@ -127,9 +170,9 @@ async def Insertquery(query: UserModel.newquery):
         sql_query = f"CALL InsertQuery_sp('{query.queries}', '{query.userid}', '{query.querytype}', '{query.opendate}', '{query.closedate}', '{query.processtype}')"
         cur.execute(sql_query)
         conn.commit()
-        result =  cur.fetchone()
-        if 'Message'in result:
-            result=result['Message']
+        result = cur.fetchone()
+        if 'Message' in result:
+            result = result['Message']
 
         returndata = {"status": True, "data": "", "msg": result}
         return returndata
@@ -147,9 +190,9 @@ async def updatequery(query: UserModel.updatequery):
         sql_query = f"Call UpdateQueries_sp('{query.id}','{query.userid}','{query.process}','{query.closedate}','{query.querytype}')"
         cur.execute(sql_query)
         result = cur.fetchone()
-        if 'Message'in result:
-            result=result['Message']
-        returndata = {"status": True, "data": result, "msg": ""}
+        if 'Message' in result:
+            result = result['Message']
+        returndata = {"status": True, "data": '', "msg": result}
         return returndata
     except err as e:
         return {'status': False, "data": [], "msg": e}
@@ -157,7 +200,6 @@ async def updatequery(query: UserModel.updatequery):
     finally:
         cur.close()
         conn.close()
-
 
 
 @app.delete('/deletequery')
@@ -166,7 +208,9 @@ async def deletequery(query: UserModel.deletequery):
         sql_query = f"Call DeleteQuries_sp({query.id})"
         cur.execute(sql_query)
         result = cur.fetchone()
-        returndata = {"status": True, "data": result, "msg": ""}
+        if 'Message' in result:
+            result = result['Message']
+        returndata = {"status": True, "data": "", "msg": result}
         return returndata
     except err as e:
         return {'status': False, "data": [], "msg": e}
@@ -174,3 +218,131 @@ async def deletequery(query: UserModel.deletequery):
     finally:
         cur.close()
         conn.close()
+
+
+@app.post('/Insertasset')
+async def InsertAsset():
+    try:
+        pass
+    except err as e:
+        return {'status': False, "data": [], "msg": e}
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.get('/GetAsset')
+async def GetAsset():
+    try:
+        sql_query = f"Call GetAsset_sp"
+        cur.execute(sql_query)
+        result = cur.fetchall()
+        returndata = {"status": True, "data": result, "msg": ""}
+        return returndata
+    except err as e:
+        return {'status': False, "data": [], "msg": e}
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.post('/UpdateAsset')
+async def UpdateAsset(query: UserModel.updateasset):
+    try:
+        sql_query = f"Call UpdateAsset_sp('{query.id}','{query.assetid}','{query.grpname}','{query.slno}','{query.owntype}','{query.company}','{query.statustyp}','{query.assetdescrp}','{query.process}','{query.gen}','{query.ram}','{query.hdd}','{query.makedescrp}','{query.empid}','{query.username}','{query.dept}','{query.loc}','{query.remarks}','{query.purchasevendor}','{query.purchasedate}','{query.warantydate}','{query.warantystatus}')"
+        cur.execute(sql_query)
+        result = cur.fetchone()
+        if 'Message' in result:
+            result = result['Message']
+        returndata = {"status": True, "data": '', "msg": result}
+        return returndata
+    except err as e:
+        return {'status': False, "data": [], "msg": e}
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete('/DeleteAsset')
+async def DeleteAsset(query: UserModel.deleteasset):
+    try:
+        sql_query = f"Call DeleteAsset_sp('{query.id}','{query.slno}')"
+        cur.execute(sql_query)
+        result = cur.fetchone()
+        if 'Message' in result:
+            result = result['Message']
+        returndata = {"status": True, "data": '', "msg": result}
+        return returndata
+    except err as e:
+        return {'status': False, "data": [], "msg": e}
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post('/InsertMovement')
+async def InsertMovement(query: UserModel.InsertMovement):
+    try:
+        sql_query = f"Call InsertMovement_sp('{query.type}','{query.imaco}','{query.datecol}','{query.assetno}','{query.empid}','{query.empname}','{query.dept}','{query.location}','{query.companies}','{query.assettyp}','{query.model}',{query.assetstickeravial},'{query.remarks}','{query.serialno}','{query.softinstalled}','{query.remarks}','{query.serialno}','{query.softinstalled}','{query.ithead}','{query.depthead}','{query.hrincharge}','{query.returned}')"
+        cur.execute(sql_query)
+        result = cur.fetchone()
+        if 'Message' in result:
+            result = result['Message']
+        returndata = {"status": True, "data": '', "msg": result}
+        return returndata
+
+    except err as e:
+        return {'status': False, "data": [], "msg": e}
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put('/UpdateMovement')
+async def UpdateMovement(query: UserModel.UpdateMovement):
+    try:
+        sql_query = f"Call UpdateMovement_sp('{query.id}','{query.type}','{query.imacno}','{query.datecol}','{query.assetno}','{query.empid}','{query.empname}','{query.dept}','{query.location}','{query.companies}','{query.assettyp}','{query.model}','{query.assetstickeravial}','{query.remarks}','{query.serialno}','{query.softinstalled}','{query.ithead}','{query.depthead}','{query.hrincharge}','{query.returned}')"
+        cur.execute(sql_query)
+        result = cur.fetchone()
+        if 'Message' in result:
+            result = result['Message']
+        returndata = {"status": True, "data": '', "msg": result}
+        return returndata
+    except err as e:
+        return {'status': False, "data": [], "msg": e}
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete('/DeleteMovement')
+async def DeleteMovement(query:UserModel.DeleteMovement):
+    try:
+        sql_query = f"Call DeleteMovement_sp('{query.id}')"
+        cur.execute(sql_query)
+        result = cur.fetchone()
+        if 'Message' in result:
+            result = result['Message']
+        returndata = {"status": True, "data": '', "msg": result}
+        return returndata
+    except err as e:
+        return {'status': False, "data": [], "msg": e}
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get('/GetMovement')
+async def GetMovement(query:UserModel.GetMovement):
+    try:
+        sql_query = f"Call GetMovement_sp('{query.serialno}')"
+        cur.execute(sql_query)
+        result = cur.fetchone()
+        if 'Message' in result:
+            result = result['Message']
+        returndata = {"status": True, "data": '', "msg": result}
+        return returndata
+    except err as e:
+        return {'status': False, "data": [], "msg": e}
+    finally:
+        cur.close()
+        conn.close()
+
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
