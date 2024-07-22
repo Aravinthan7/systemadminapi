@@ -14,27 +14,6 @@ cur = db.Mysqlconfig.cursor
 err = db.Mysqlconfig.error
 # --------
 
-# Enable CORS (if needed)
-app.add_middleware(
-    CORSMiddleware,
-    # Allow all origins for testing, tighten this in production
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-# Mock user data (replace with actual user validation logic)
-fake_users_db = {
-    "johndoe": {
-        "username": "johndoe",
-        "full_name": "John Doe",
-        "email": "johndoe@example.com",
-        "hashed_password": "fakehashedpassword",
-    }
-}
-
 #Middleware for global authorization
 @app.middleware("http")
 async def global_auth_middleware(request: Request, call_next):
