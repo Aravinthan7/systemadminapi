@@ -1,3 +1,4 @@
+import uvicorn
 from fastapi import FastAPI, Request, HTTPException, Header, status
 from DB import db
 from Models import UserModel
